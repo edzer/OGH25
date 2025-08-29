@@ -1,0 +1,289 @@
+# Raster and vector data cubes in R and Python
+
+Edzer Pebesma, GitHub Copilot, 2024-06-19
+
+## What is an array?
+
+An array is a data structure that can hold multiple values in more than two dimensions. It is a generalization of matrices to higher dimensions. Arrays can be used to represent multi-dimensional data, such as images, videos, or spatial-temporal datasets.
+
+Arrays extend vectors (1D) to multidimensional structures. In R, this happens by adding the special `dim` attribute.
+
+```{r}
+v = 1:24
+class(v)
+dim(v) # NULL: does not exist yet
+dim(v) = c(6, 4)
+attr(v, "dim")
+dim(v)
+class(v)
+v
+```
+we see that the matrix is filled column-wise by default ("column-major order"). We can change that by specifying the `byrow` argument in the `matrix()` function:
+```{r}
+m = matrix(1:24, nrow = 6, ncol = 4, byrow = TRUE)
+m
+```
+or by transposing the matrix:
+```{r}
+dim(v) = c(4, 6)
+v2 = t(v)
+v2
+```
+In any case, the memory layout remains column-major:
+```{r}
+as.vector(v)
+as.vector(v2)
+```
+
+### Higher dimensions
+
+We may consider a vector as a 1-dimensional array, and a matrix as a 2-dimensional array. We can extend this to higher dimensions by specifying more dimensions:
+
+::: panel-tabset
+#### R
+```{r}
+a = array(1:24, dim = c(2, 3, 4))
+a
+a[2,2,2]
+```
+
+#### Python
+```{python}
+import numpy as np
+a = np.arange(1, 25).reshape((2, 3, 4))
+a
+a[1,1,1]
+a = a.reshape((4, 3, 2))
+a
+a[1,1,1]
+```
+:::
+
+### Finding an element
+
+In column-major order, the first index changes fastest. To find the element at row 2, column 3 in a 6x4 matrix, we can calculate its position in the vector as follows:
+```{r}
+row = 2
+col = 3
+nrow = 6
+index = (col - 1) * nrow + row
+index
+v[index]
+v[row, col]
+```
+This idea extends to higher dimensions. For a 3D array with dimensions (2, 3, 4), the element at position (2, 2, 2) can be found as:
+
+::: panel-tabset
+#### R
+```{r}
+dim1 = 2
+dim2 = 3
+dim3 = 4
+i = 2
+j = 2
+k = 2
+index = (k - 1) * (dim1 * dim2) + (j - 1) * dim1 + i
+index
+a[index]
+a[i, j, k]
+```
+#### Python
+In Python, the same calculation applies, but with zero-based indexing:
+```{python}
+dim1 = 2
+dim2 = 3
+dim3 = 4
+i = 1  # zero-based index
+j = 1
+k = 1
+index = k * (dim1 * dim2) + j * dim1 + i
+index
+a.reshape(24)[index]
+a[i, j, k]
+```
+:::
+
+* The difference in the code may be seen as a reason why Python has 0-based indexing, and R is more readable.
+* finding an element in a 4D array is left as an exercise to the reader.
+* finding elements in arrays comes at a near-zero cost, as it is just an arithmetic operation.
+* finding elements in data frames or lists is more complex: 
+    * it may require searching through names or keys
+    * row + column cannot be reduced to a single index
+
+### Are data.frames also arrays?
+
+No, data.frames are lists of vectors of equal length, but not necesarily of equal type. They do not have a `dim` attribute, but they do have `nrow` and `ncol` attributes. You can convert a data.frame to a matrix (which is a 2D array) if all columns are of the same type.
+```{r}
+df = data.frame(a = 1:3, b = c("x", "y", "z"), c = Sys.Date() + 1:3)
+df
+as.matrix(df) # converts to character matrix
+df2 = data.frame(a = 1:3, b = 4:6, c = c(TRUE, FALSE, NA))
+as.matrix(df2) # converts to numeric matrix
+```
+
+### Array operations
+Arrays support element-wise operations, such as addition, subtraction, multiplication, and division. These operations are performed on corresponding elements of the arrays.
+
+::: panel-tabset
+#### R
+```{r}
+a1 = array(1:24, dim = c(2, 3, 4))
+a2 = array(24:1, dim = c(2, 3, 4))
+a_sum = a1 + a2
+a_sum
+a_prod = a1 * a2
+a_prod
+a_prod[1,1,1] # 1 * 24
+a_prod[2,3,4] # 12 * 13
+a1 + 10 # adds 10 to each element
+a1 * 2 # multiplies each element by 2
+a1 / 2 # divides each element by 2
+a1 - 2 # subtracts 2 from each element
+a1 ^ 2 # squares each element
+a1 %% 2 # modulus of each element
+a1 %/% 2 # integer division of each element
+a1 > 12 # logical array
+a1[a1 > 12] # extracts elements greater than 12
+mean(a1) # mean of all elements
+sd(a1) # standard deviation of all elements
+sum(a1) # sum of all elements
+range(a1) # range of all elements
+dim(a1) # dimensions of the array
+length(a1) # total number of elements
+str(a1) # structure of the array
+summary(a1) # summary of the array
+table(a1) # frequency table of the elements
+apply(a1, 1, mean) # mean of each row (1st dimension)
+apply(a1, 2, mean) # mean of each column (2nd dimension)
+apply(a1, 3, mean) # mean of each slice (3rd dimension)
+apply(a1, c(1,2), mean) # mean of each row-column combination (1st and 2nd dimensions)
+apply(a1, c(1,3), mean) # mean of each row-slice combination (1st and 3rd dimensions)
+apply(a1, c(2,3), mean) # mean of each column-slice combination (2nd and 3rd dimensions)
+rowSums(a1) # sum of each row
+colSums(a1) # sum of each column
+sliceSums = function(x) apply(x, 3, sum); sliceSums(a1) # sum of each slice
+rowMeans(a1) # mean of each row
+colMeans(a1) # mean of each column
+sliceMeans = function(x) apply(x, 3, mean); sliceMeans(a1) # mean of each slice
+a1[,,1] # first slice
+a1[,,2] # second slice
+a1[,,3] # third slice
+a1[,,4] # fourth slice
+a1[1,,] # first row across all slices
+a1[2,,] # second row across all slices
+a1[,1,] # first column across all slices
+a1[,2,] # second column across all slices
+a1[,3,] # third column across all slices
+a1[1,1,] # first row, first column across all slices
+a1[2,3,] # second row, third column across all slices
+a1[1,,1] # first row across first slice
+a1[2,,4] # second row across fourth slice
+a1[,1,1] # first column across first slice
+a1[,3,4] # third column across fourth slice
+```
+#### Python
+```{python}
+import numpy as np
+a1 = np.arange(1, 25).reshape((2, 3, 4))
+a2 = np.arange(24, 0, -1).reshape((2, 3, 4))
+a_sum = a1 + a2
+a_sum
+a_prod = a1 * a2
+a_prod
+a_prod[0,0,0] # 1 * 24
+a_prod[1,2,3] # 12 * 13
+a1 + 10 # adds 10 to each element
+a1 * 2 # multiplies each element by 2
+a1 / 2 # divides each element by 2
+a1 - 2 # subtracts 2 from each element
+a1 ** 2 # squares each element
+a1 % 2 # modulus of each element
+a1 // 2 # integer division of each element
+a1 > 12 # logical array
+a1[a1 > 12] # extracts elements greater than 12
+np.mean(a1) # mean of all elements
+np.std(a1) # standard deviation of all elements
+np.sum(a1) # sum of all elements
+np.ptp(a1) # range of all elements
+a1.shape # dimensions of the array
+a1.size # total number of elements
+a1.ndim # number of dimensions
+a1.dtype # data type of the elements
+a1.itemsize # size of each element in bytes
+a1.nbytes # total size of the array in bytes
+np.unique(a1, return_counts=True) # frequency table of the elements
+np.apply_along_axis(np.mean, 0, a1) # mean of each row (0th dimension)
+np.apply_along_axis(np.mean, 1, a1) # mean of each column (1st dimension)
+np.apply_along_axis(np.mean, 2, a1) # mean of each slice (2nd dimension)
+np.mean(a1, axis=(0,1)) # mean of each slice (2nd dimension)
+np.mean(a1, axis=(0,2)) # mean of each column-slice combination (0th and 2nd dimensions)
+np.mean(a1, axis=(1,2)) # mean of each row-slice combination (1st and 2nd dimensions)
+np.sum(a1, axis=0) # sum of each row
+np.sum(a1, axis=1) # sum of each column
+np.sum(a1, axis=2) # sum of each slice
+np.mean(a1, axis=0) # mean of each row
+np.mean(a1, axis=1) # mean of each column
+np.mean(a1, axis=2) # mean of each slice
+a1[:,:,0] # first slice
+a1[:,:,1] # second slice
+a1[:,:,2] # third slice
+a1[:,:,3] # fourth slice
+a1[0,:,:] # first row across all slices
+a1[1,:,:] # second row across all slices
+a1[:,0,:] # first column across all slices
+a1[:,1,:] # second column across all slices
+a1[:,2,:] # third column across all slices
+a1[0,0,:] # first row, first column across all slices
+a1[1,2,:] # second row, third column across all slices
+a1[0,:,0] # first row across first slice
+a1[1,:,3] # second row across fourth slice
+a1[:,0,0] # first column across first slice
+a1[:,2,3] # third column across fourth slice
+```
+:::
+
+## Raster and vector data cubes
+
+Arrays are data cubes. Raster and vector data cubes are arrays with one or more spatial dimensions, and zero or more temporal dimensions. Raster data cubes can be sliced into a raster map, spatial dimensions are e.g. longitude and latitude, or x- and y-dimensions in some projected coordinate reference system. Vector data cubes can be sliced into a set of spatial features, having point, line or polygon geometries.
+
+### Raster data cubes
+
+::: panel-tabset
+#### R
+```{r}
+library(stars)
+# create a 3D array with dimensions (x, y, time)
+data = array(1:(10*10*5) + rnorm(500)*50, dim = c(x = 10, y = 10, time = 5))
+# create a stars object
+raster_cube = st_as_stars(list(a = data))
+raster_cube
+raster_cube |>
+  st_set_dimensions("x", values = 1:10, xy = c("x", "y")) |>
+  st_set_dimensions("y", values = 51:60) |>
+  st_set_dimensions("time", values = as.Date("2020-01-01") + 0:4) |> 
+  st_set_crs(st_crs("OGC:CRS84")) -> raster_cube
+raster_cube
+# plot the first time slice
+plot(raster_cube)
+```
+#### Python
+```{python}
+import numpy as np
+import xarray as xr
+# create a 3D array with dimensions (x, y, time)
+data = np.arange(1, 10*10*5 + 1).reshape((10, 10, 5)) + np.random.normal(0, 50, size=(10, 10, 5))
+# create an xarray DataArray
+raster_cube = xr.DataArray(data, dims=("y", "x", "time"),
+                           coords={"y": np.arange(51, 61),
+                                   "x": np.arange( 1, 11),
+                                   "time": np.arange(np.datetime64('2020-01-01'), np.datetime64('2020-01-06'))})
+# set the coordinate reference system (CRS) using rioxarray
+import rioxarray
+raster_cube = raster_cube.rio.write_crs(4326)
+print(raster_cube.rio.crs)
+raster_cube
+# plot the first time slice
+raster_cube.isel(time=0).plot()
+```
+
+Raster data cubes are multi-dimensional arrays that represent spatial-temporal data. They can be used to store and analyze data such as satellite imagery, climate data, or any other data that varies over space and time.

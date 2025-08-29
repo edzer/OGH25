@@ -1,1 +1,1 @@
-# OGH25
+# OGH25: summer school contributions
