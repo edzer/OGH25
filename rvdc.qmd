@@ -1,6 +1,8 @@
 # Raster and vector data cubes in R and Python
 
-Edzer Pebesma, GitHub Copilot, 2024-06-19
+OpenGeoHub summer school tutorial Tue 2024-09-02, 13:30-15:00
+
+Authors: Edzer Pebesma, GitHub Copilot
 
 ## What is an array?
 
@@ -242,6 +244,10 @@ a1[:,2,3] # third column across fourth slice
 ```
 :::
 
+### Linear algebra on arrays
+
+With vectors and matrices we can do all linear algebra operations: matrix-vector multiplication, matrix-matrix multiplication, determinants, inverses, eigenvalues, singular value decomposition, etc. These operations form the basis for all statistical, ML and DL methods. This however is not the topic of this tutorial.
+
 ## Raster and vector data cubes
 
 Arrays are data cubes. Raster and vector data cubes are arrays with one or more spatial dimensions, and zero or more temporal dimensions. Raster data cubes can be sliced into a raster map, spatial dimensions are e.g. longitude and latitude, or x- and y-dimensions in some projected coordinate reference system. Vector data cubes can be sliced into a set of spatial features, having point, line or polygon geometries.
@@ -264,19 +270,20 @@ raster_cube |>
   st_set_crs(st_crs("OGC:CRS84")) -> raster_cube
 raster_cube
 # plot the first time slice
-plot(raster_cube)
+plot(raster_cube, box_col = 'orange')
 ```
 #### Python
 ```{python}
 import numpy as np
 import xarray as xr
 # create a 3D array with dimensions (x, y, time)
-data = np.arange(1, 10*10*5 + 1).reshape((10, 10, 5)) + np.random.normal(0, 50, size=(10, 10, 5))
+data = np.arange(1, 5*10*10 + 1).reshape((5, 10, 10)) + np.random.normal(0, 50, size=(5, 10, 10))
 # create an xarray DataArray
-raster_cube = xr.DataArray(data, dims=("y", "x", "time"),
-                           coords={"y": np.arange(51, 61),
-                                   "x": np.arange( 1, 11),
-                                   "time": np.arange(np.datetime64('2020-01-01'), np.datetime64('2020-01-06'))})
+raster_cube = xr.DataArray(data, dims=("time", "y", "x"),
+                           coords={
+                                 "time": np.arange(np.datetime64('2020-01-01'), np.datetime64('2020-01-06')),
+                                 "y": np.arange(51, 61),
+                                 "x": np.arange( 1, 11)})
 # set the coordinate reference system (CRS) using rioxarray
 import rioxarray
 raster_cube = raster_cube.rio.write_crs(4326)
@@ -285,5 +292,42 @@ raster_cube
 # plot the first time slice
 raster_cube.isel(time=0).plot()
 ```
+:::
 
 Raster data cubes are multi-dimensional arrays that represent spatial-temporal data. They can be used to store and analyze data such as satellite imagery, climate data, or any other data that varies over space and time.
+
+### Real data
+
+::: panel-tabset
+#### R
+```{r}
+tif <- system.file("tif/L7_ETMs.tif", package = "stars")
+library(stars)
+(r <- read_stars(tif))
+```
+#### Python
+```{python}
+import xarray as xr
+import rioxarray as rxr
+r = rxr.open_rasterio('https://github.com/r-spatial/stars/raw/refs/heads/main/inst/tif/L7_ETMs.tif')
+print(r)
+```
+:::
+
+Plotting:
+
+::: panel-tabset
+#### R
+```{r}
+plot(r)
+```
+#### Python
+```{python}
+r.plot() # too bad
+```
+```{python}
+r.isel(band=0).plot()
+```
+:::
+
+### Vector data cubes
