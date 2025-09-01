@@ -331,3 +331,50 @@ r.isel(band=0).plot()
 :::
 
 ### Vector data cubes
+
+Vector data cubes are data cubes for which one or more dimensions are associated with a set of feature geometries (POINT, LINESTRING, POLYGON or their MULTI- variants). They can be used to store and analyze time series associated with POINT or POLYGON geometries.
+
+::: panel-tabset
+#### R
+```{r}
+set.seed(12321)
+library(sf)
+library(stars)
+# install.packages("PCICt", repos = "https://cran.uni-muenster.de/pebesma")
+nc = system.file("nc/tos_O1_2001-2002.nc", package = "stars")
+r = read_mdim(nc)
+pts = st_sample(st_bbox(r), 20)
+(e = st_extract(r, pts))
+library(xts)
+plot(as.xts(as.POSIXct(e)))
+```
+#### Python
+```{python}
+import geopandas as gpd
+import xarray as xr
+import rioxarray as rxr
+from shapely.geometry import Point
+import numpy as np
+# open https://github.com/r-spatial/stars/blob/main/inst/nc/tos_O1_2001-2002.nc with xarray
+#r = xr.open_dataarray("https://github.com/r-spatial/stars/blob/main/inst/nc/tos_O1_2001-2002.nc?raw=true")
+ds = xr.open_dataset("/home/edzer/R/x86_64-pc-linux-gnu-library/4.4/stars/nc/tos_O1_2001-2002.nc")
+# create random points within the bounding box of the raster
+r = ds['tos']
+r
+
+bbox = r.rio.bounds()
+points = [Point(np.random.uniform(bbox[0], bbox[2]), np.random.uniform(bbox[1], bbox[3])) for _ in range(20)]
+gdf = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326")
+# read the netCDF file as an xarray DataArray
+# extract the time series at the points
+e = r.sel(lon=xr.DataArray(gdf.geometry.x, dims="points"),
+          lat=xr.DataArray(gdf.geometry.y, dims="points"), method="nearest")
+e
+print(e)
+#gdf['time_series'] = list(e.values)
+#gdf
+#print(gdf)
+#gdf.explore(column='time_series', cmap='viridis', legend=True)
+```
+:::
+
