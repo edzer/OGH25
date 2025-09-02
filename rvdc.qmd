@@ -340,6 +340,7 @@ Vector data cubes are data cubes for which one or more dimensions are associated
 set.seed(12321)
 library(sf)
 library(stars)
+
 # install.packages("PCICt", repos = "https://cran.uni-muenster.de/pebesma")
 nc = system.file("nc/tos_O1_2001-2002.nc", package = "stars")
 r = read_mdim(nc)
@@ -378,3 +379,25 @@ print(e)
 ```
 :::
 
+### Using xvec in Python:
+```{python}
+import xvec as xv
+import geopandas as gpd
+import numpy as np
+from shapely.geometry import Point
+# open
+ds = xr.open_dataset("/home/edzer/R/x86_64-pc-linux-gnu-library/4.4/stars/nc/tos_O1_2001-2002.nc")
+# create random points within the bounding box of the raster
+r = ds['tos']
+r
+bbox = r.rio.bounds()
+points = [Point(np.random.uniform(bbox[0], bbox[2]), np.random.uniform(bbox[1], bbox[3])) for _ in range(20)]
+# gdf = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326")
+e = r.xvec.extract_points(points, x_coords="lon", y_coords="lat", name="")
+e.name = "L7_ETMs"
+e
+```
+
+### More examples
+
+More examples are found in Ch 7 of "Spatial Data science: With Applications in R and Python", online found [here](https://r-spatial.org/python/07-Introsf.html#package-stars).
